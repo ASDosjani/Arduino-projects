@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+  font-family: "Lato", sans-serif;
+  transition: background-color .5s;
+}
+.sidenav {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+}
+
+.sidenav a {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #818181;
+  display: block;
+  transition: 0.3s;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+#main {
+  transition: margin-left .5s;
+  padding: 16px;
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+input[type='color'] {
+width:100%;
+height:100%;
+background: #FFFFFF 0% 0% no-repeat padding-box;
+box-shadow: 0px 3px 6px #0000001A;
+transform: scale(1.5);
+}
+.ap {
+border-style: solid;
+border-width: 1px;
+width: 48%;
+}
+.style12 {
+width: 48%;
+text-align: center;
+border-left-style: none;
+border-left-width: 2px;
+border-right-style: none;
+border-right-width: 2px;
+border-top-style: none;
+border-top-width: 2px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+}
+</style>
+</head>
+<body>
+
+<div id="mySidenav" class="sidenav">
+  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+  <a href="/">LED</a>
+  <a href="music">Music</a>
+  <a href="settings"><strong>Settings</strong></a>
+</div>
+
+<div id="main" class="style1">
+  <div style="text-align: left;"><span style="font-size:30px;cursor:pointer" onclick="openNav()" class="style2">&#9776;</span>
+  </div>
+  <div style="text-align: center;">
+  <table style="border-collapse: collapse; width: 70%" id="t" align="center" cellspacing="0">
+<tr>
+<td class="style12" ><strong>SSID</strong></td>
+<td class="style12" ><strong>Password</strong></td>
+<td ></td>
+</tr>
+</table>
+<input name="Button1" type="button" style="margin:10px" onclick="add()" value="Add access point">
+<input name="Button1" type="button" style="margin:10px" onclick="save()" value="Save and Restart">
+<br>
+<label>
+City: 
+<input type="text" id="c" value="
+">
+</label>
+<button onclick="cityupdate()">Save</button>
+<br>
+<br>
+<button onclick="reboot()">Reboot</button>
+</div>
+</div>
+<script>
+			
+function openNav() {
+  document.getElementById("mySidenav").style.width = "250px";
+  document.getElementById("main").style.marginLeft = "250px";}
+
+function closeNav() {
+  document.getElementById("mySidenav").style.width = "0";
+  document.getElementById("main").style.marginLeft= "0";
+}
+function save(){
+  var ap=[];
+  var table =document.getElementById('t');
+  for (var r = 1; r < table.rows.length; r++) {
+      if(table.rows[r].cells[0].innerHTML!=""){
+     ap.push(table.rows[r].cells[0].innerHTML);
+     ap.push(table.rows[r].cells[1].innerHTML.length>0?table.rows[r].cells[1].innerHTML:0);
+      }
+  } 
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/apupdate?json="+JSON.stringify(ap), true);
+  xhr.send();
+}
+function reboot(){
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/reboot", true);
+  xhr.send();
+}
+function add(){
+var table =document.getElementById('t');
+var row = table.insertRow();
+var cell1 = row.insertCell();
+var cell2 = row.insertCell();
+var cell3 = row.insertCell();
+cell1.className="ap";
+cell1.setAttribute("contenteditable","true");
+cell2.className="ap";
+cell2.setAttribute("contenteditable","true");
+cell3.innerHTML="<a style='cursor: default; user-select: none;' onclick='this.parentElement.parentElement.remove()'><strong>&times;</strong></a>";
+}
+function cityupdate(){
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/cityupdate?city="+document.getElementById('c').value, true);
+  xhr.send();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+  font-family: "Lato", sans-serif;
+  transition: background-color .5s;
+}
+.sidenav {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+}
+
+.sidenav a {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #818181;
+  display: block;
+  transition: 0.3s;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+#main {
+  transition: margin-left .5s;
+  padding: 16px;
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+.style1 {
+	text-align: center;
+}
+.style2 {
+	text-align: left;
+}
+</style>
+</head>
+<body onload="musicfile(document.getElementById('file').children[0])">
+
+<div id="mySidenav" class="sidenav">
+  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+  <a href="/">LED</a>
+  <a href="music"><strong>Music</strong></a>
+  <a href="settings">Settings</a>
+</div>
+
+<div id="main" class="style1">
+<div class="style2"><span style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+</div>
+<button onclick="remove()">Remove selected file</button>
+<select id="file" style="min-width: 100px" onchange="musicfile(this)">
+</select><label> File name:
+<input type="text" id="fn" maxlength="28"> </label>
+<input type="file" accept="text/,.txt" id="import" onchange="importfile()" style="display: none;">
+<button onclick="document.getElementById('import').click();">Import file</button>
+<button onclick="savefile()">Save as file</button>
+<br>
+<br>
+<button onclick="ins(0,0,0)">Add note</button>
+<button onclick="document.getElementById('d').innerHTML='';">Clear</button>
+<button onclick="save()">Save to device</button>
+<button onclick="play()">Play</button>
+<button onclick="stop()">Stop</button>
+<div id="d"></div>
+</div>
+<script>
+function openNav() {
+  document.getElementById("mySidenav").style.width = "250px";
+  document.getElementById("main").style.marginLeft = "250px";
+}
+
+function closeNav() {
+  document.getElementById("mySidenav").style.width = "0";
+  document.getElementById("main").style.marginLeft= "0";
+}
+function play() {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/musicplay", true);
+  xhr.send();
+}
+function stop() {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/musicstop", true);
+  xhr.send();
+}
+function remove() {
+  if (confirm("Are you sure want to remove?") == true) {
+  var x = document.getElementById('file');
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/musicfile?fn="+x.value+"&del", true);
+  xhr.send();
+  x.remove(x.selectedIndex);
+   if(document.getElementById("file").hasChildNodes()){
+    musicfile(document.getElementById("file"));
+   }
+ }
+}
+function importfile(){
+var fr=new FileReader();
+fr.onload=function(){
+document.getElementById('d').innerHTML='';
+var r = JSON.parse(fr.result);
+for(let i =0;i<r.length;i+=3){
+ins(r[i],r[i+1],r[i+2]);
+}
+}
+fr.readAsText(document.getElementById("import").files[0]);
+document.getElementById("fn").value=document.getElementById("import").files[0].name.slice(0,-4);
+}
+function savefile(){
+if(document.getElementById("fn").value!="")
+  {
+  if(document.getElementById('d').hasChildNodes()){
+var array = document.getElementById('d').getElementsByTagName("select");
+var s=[];
+    for(var i = 0;i<array.length;i++)
+    {
+    s.push(new Number(array[i].value));
+    }
+var a = document.createElement("a");
+a.href = window.URL.createObjectURL(new Blob([JSON.stringify(s)], {type: "text/plain"}));
+a.download = document.getElementById("fn").value+".txt";
+a.click();
+}
+else alert("There is nothing to save!");
+}
+else alert("File name required!");
+}
+function musicfile(element){
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById('d').innerHTML='';
+      var r = JSON.parse(this.responseText);
+      for(let i =0;i<r.length;i+=3){
+      ins(r[i],r[i+1],r[i+2]);
+      }
+    }
+  };
+  xhr.open("GET", "/musicfile?fn="+element.value, true);
+  xhr.send();
+  document.getElementById("fn").value=element.value;
+}
+function save() {
+  if(document.getElementById("fn").value!="")
+  {
+    var array = document.getElementById('d').getElementsByTagName("select");
+    var s=[];
+    for(var i = 0;i<array.length;i++)
+    {
+    s.push(new Number(array[i].value));
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/musicupdate?fn="+document.getElementById("fn").value+"&json="+JSON.stringify(s), true);
+    xhr.send();
+    
+    var x = document.getElementById("file");
+    var c=false;
+    if(document.getElementById("file").hasChildNodes()){
+    for(i in x.children){
+    if(x[i].value==document.getElementById("fn").value)c=true;
+    }
+    }
+    if(!c)x.appendChild(new Option(document.getElementById("fn").value));
+  }
+    else alert("File name required!");
+}
+
+function createnote(n, o, t){
+    var div = document.createElement("div");
+	var table = document.createElement("table");
+	var tr1 = document.createElement("tr");
+	var tr2 = document.createElement("tr");
+	var tr3 = document.createElement("tr");
+	var td1 = document.createElement("td");
+	var td2 = document.createElement("td");
+	var td3 = document.createElement("td");
+	var td4 = document.createElement("td");
+	var close = document.createElement("b");
+	var noteselect = document.createElement("select");
+	var octaveselect = document.createElement("select");
+	var timeselect = document.createElement("select");
+	var insert = document.createElement("button");
+	var notes= ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B","Rest"];
+	var time= ["1","1/2","1/4","1/8","1/16"];
+    
+	for(let i=0;i<notes.length;i++){
+	noteselect.appendChild(new Option(notes[i],i+1));
+	}
+	for(let i = 1;i<=8;i++){
+	octaveselect.appendChild(new Option(i));
+	}
+	for(let i=0;i<time.length;i++)
+	{
+	timeselect.appendChild(new Option(time[i],i));
+	}
+    
+    if(n>0) noteselect.children[n-1].setAttribute("selected","true");
+    if(o>0) octaveselect.children[o-1].setAttribute("selected","true");
+    else
+	octaveselect.children[3].setAttribute("selected","true");
+    if(t>0) timeselect.children[t].setAttribute("selected","true");
+    else timeselect.children[1].setAttribute("selected","true");
+    
+    div.style.width="140px";
+    div.style.display="inline-block";
+    div.style.marginTop="10px";
+    table.style.backgroundColor="#a3a3a3";
+    table.style.display="inline-block";
+    noteselect.style.userSelect="none";
+	octaveselect.style.userSelect="none";
+	timeselect.style.userSelect="none";
+	close.innerHTML="&times;";
+	close.style.fontSize="25px";
+	close.style.cursor="default";
+	close.style.userSelect="none";
+	close.onclick=function(){rem(this);};
+	insert.innerHTML="+";
+    insert.style.float="right";
+    insert.style.marginTop="33px";
+	insert.onclick=function(){this.parentElement.insertAdjacentElement("afterend",createnote(0,0,0))};
+    
+    td1.appendChild(noteselect);
+    td1.innerHTML+=" Note";
+    td2.appendChild(close);
+    tr1.appendChild(td1);
+    tr1.appendChild(td2);
+    
+    td3.appendChild(octaveselect);
+    td3.innerHTML+=" Octave";
+    tr2.appendChild(td3);
+    
+    td4.appendChild(timeselect);
+    td4.innerHTML+=" Time";
+    tr3.appendChild(td4);
+    
+    table.appendChild(tr1);
+    table.appendChild(tr2);
+    table.appendChild(tr3);
+    div.appendChild(table);
+    div.appendChild(insert);
+    return div;
+}
+function ins(n, o, t){
+	document.getElementById("d").appendChild(createnote(n, o, t));
+}
+function rem(element){
+element.parentElement.parentElement.parentElement.parentElement.remove();
+}
+</script>
+</body>
+</html>
