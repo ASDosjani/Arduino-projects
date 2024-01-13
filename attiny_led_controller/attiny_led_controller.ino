@@ -6,7 +6,11 @@
 #define PIN_BUTTON PB2
 #define PIN_STRIP PB0  // Digital IO pin connected to the NeoPixels.
 
-#define PIXEL_COUNT 48  // Number of NeoPixels
+#define PIXEL_COUNT 47  // Number of NeoPixels
+
+#define DEFAULT_COLOR 255, 250, 215
+
+#define INACTIVITY_TIMEOUT 5400000 // Automatic LED turning off after this in ms (1.5h)
 
 // Setup a new OneButton on pin PIN_BUTTON
 // The 2. parameter activeLOW is true, because external wiring sets the button to LOW when pressed.
@@ -16,7 +20,7 @@ Adafruit_NeoPixel strip(PIXEL_COUNT, PIN_STRIP, NEO_GRB + NEO_KHZ800);
 
 uint8_t lastmode = 2;
 uint8_t pulsatingBrightness = 0;
-unsigned long lastLedUpdate = 0, lastPress = 0;
+unsigned long lastLedUpdate = 0, lastPressEEPROM = 0, lastPressDeepSleep = 0;
 
 struct LEDConfiguration {
   uint8_t mode = 2;  // 0, 1 - disabled led
@@ -33,9 +37,6 @@ void setup() {
   button.attachDoubleClick(changeColor);
   button.attachMultiClick(multiclick);
   button.attachLongPressStart(turnOffLed);
-  button.attachLongPressStop(turnOffLed);
-
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
 
   ADCSRA = 0;                           // ADC disabled
   GIMSK |= _BV(PCIE);                   // Enable Pin Change Interrupts
@@ -43,10 +44,11 @@ void setup() {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);  // replaces above statement
 
   LEDConfiguration conf;
-  EEPROM.get(10, conf);
+  EEPROM.get(20, conf);
 
   if (conf.mode != 0xff && conf.mode > 1) {
-    ledconf.mode = conf.mode;
+    lastmode = conf.mode;
+    ledconf.mode = 0;
   }
   if (conf.brightness >= 20) {
     ledconf.brightness = conf.brightness;
@@ -75,13 +77,19 @@ void system_sleep() {
 }
 
 ISR(PCINT0_vect) {
-  lastPress = millis();
+  lastPressEEPROM = millis();
+  lastPressDeepSleep = lastPressEEPROM;
 }
 
 void loop() {
-  if (lastPress != 0 && lastPress + 5000 < millis()) {
-    lastPress = 0;
-    EEPROM.put(10, ledconf);  //save config
+  if (lastPressEEPROM != 0 && lastPressEEPROM + 5000 < millis()) {
+    lastPressEEPROM = 0;
+    EEPROM.put(20, ledconf);  //save config
+  }
+
+  if (lastPressDeepSleep + INACTIVITY_TIMEOUT < millis()) {
+    lastPressDeepSleep = 0;
+    turnOffLed();
   }
 
   switch (ledconf.mode) {
@@ -163,7 +171,7 @@ void turnOffLed() {
 void staticColor() {
   if (ledconf.colorHue == -1) {
     for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, 255, 255, 255);
+      strip.setPixelColor(i, DEFAULT_COLOR);
     }
   } else {
     for (int i = 0; i < strip.numPixels(); i++) {
@@ -193,7 +201,7 @@ void scannerColor() {
 
     if (ledconf.colorHue == -1) {
       for (int i = 0; i < strip.numPixels(); i++) {
-        strip.setPixelColor(i, 255, 255, 255);
+        strip.setPixelColor(i, DEFAULT_COLOR);
       }
       strip.setPixelColor(index - 2, 170, 170, 170);
       strip.setPixelColor(index - 1, 110, 110, 110);
@@ -248,7 +256,7 @@ void pulsatingColors() {
 
     if (pulsatingColorHue == -1) {
       for (int i = 0; i < strip.numPixels(); i++) {
-        strip.setPixelColor(i, 255, 255, 255);
+        strip.setPixelColor(i, DEFAULT_COLOR);
       }
     } else {
       for (int i = 0; i < strip.numPixels(); i++) {
